@@ -1,122 +1,117 @@
+// Screen file: upload_image_screen.dart
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
-import 'package:image_picker/image_picker.dart';
+import 'package:food_api/Image_Upload_PostApi/upload_image_controller.dart';
+import 'package:get/get.dart';
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
 
-class UploadImageScreen extends StatefulWidget {
+class UploadImageScreen extends StatelessWidget {
   const UploadImageScreen({super.key});
 
-
   @override
-  State<UploadImageScreen> createState() => _UploadImageScreenState();
-}
-
-class _UploadImageScreenState extends State<UploadImageScreen> {
-
-  File? image ;
-  final _picker = ImagePicker();
-  bool showSpinner = false;
-
-  Future getImage()async{
-  final pickedFile = await _picker.pickImage(source: ImageSource.gallery, imageQuality:80 );
-
-  if(pickedFile!= null) {
-    image = File(pickedFile.path);
-    setState(() {
-      
-    });
-  }else{
-   print('no image selected');
-  }
-}
-
-Future<void> uploadImage ()async {
-  
-  setState(() {
-    showSpinner = true;
-  });
-
-var stream =  http.ByteStream(image!.openRead());
-stream.cast();
-
-var length = await image! .length();
-
-var uri = Uri.parse('https://fakestoreapi.com/products');
-
-var request =  http.MultipartRequest('POST', uri);
-
-request.fields['title'] = 'Static title' ;
-
-var multiport = new http.MultipartFile('image', stream, length);
-
-request.files.add(multiport);
-var response = await request.send(); 
-if (response.statusCode == 200 ) {
-  setState(() {
-    showSpinner = false;
-  });
-  print('image uploaded');
-}else{
-  print('failed');
-  setState(() {
-    showSpinner = false;
-  });
-}
-
-}
-@override
   Widget build(BuildContext context) {
-    return  ModalProgressHUD(
-      
-      inAsyncCall: showSpinner,
+    // Initialize controller
+    final UploadImageController controller = Get.put(UploadImageController());
+
+    return Obx(() => ModalProgressHUD(
+      inAsyncCall: controller.showSpinner.value,
       child: Scaffold(
         appBar: AppBar(
           centerTitle: true,
           backgroundColor: Colors.cyan,
-          title: Text('Upload Image Api'),
+          title: const Text('Upload Image Api'),
         ),
         body: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-             GestureDetector(
-              onTap: () {
-                getImage();
-              },
-               child: Container(
-                child: image == null ? Center(child: Text('Pick Image'),)
-                :
-                Container(
-                  child: Center(
-                    child: Image.file(File(image!.path).absolute,
-                    height: 100,
-                    width: 100,
-                    fit: BoxFit.cover,
-                    ) ,
-                  ) ,
-                )
-               ),
-             ),
+            GestureDetector(
+              onTap: () => controller.getImage(),
+              child: Center(
+                child: Container(
+                  height: 200,
+                  width: 200,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: controller.image.value == null
+                      ? const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo, size: 50, color: Colors.grey),
+                              SizedBox(height: 10),
+                              Text('Pick Image'),
+                            ],
+                          ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.file(
+                            controller.image.value!,
+                            height: 200,
+                            width: 200,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 30),
+            
+            // Clear image button (if image is selected)
+            if (controller.image.value != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                child: GestureDetector(
+                  onTap: () => controller.clearImage(),
+                  child: Container(
+                    height: 40,
+                    width: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        "Clear Image",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
-             SizedBox(
-              height: 150,
-             ),
-             GestureDetector(
-              onTap: (){
-                uploadImage();
-              },
+            const SizedBox(height: 50),
+            
+            // Upload button
+            GestureDetector(
+              onTap: () => controller.uploadImage(),
               child: Container(
                 height: 50,
                 width: 200,
-                color: Colors.green,
-                child: Center(child: Text("upload")),
+                decoration: BoxDecoration(
+                  color: controller.image.value != null 
+                      ? Colors.green 
+                      : Colors.grey,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Text(
+                    "Upload",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
-             )
+            ),
           ],
         ),
       ),
-    );
+    ));
   }
 }
